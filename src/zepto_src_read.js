@@ -33,7 +33,11 @@
             break
           }
           if (++k >= len) throw new TypeError() //什么情况下会执行到这里来？？？
-          //note: Array.prototype.reduce.apply({length:3},[function(){}]) 且length属性为不可枚举
+          //note: Array.prototype.reduce.apply(
+          // Object.defineProperty({length:3},"length",{enumerable:false}),
+          // [function(){}]
+          // )
+          //
         } while (true)
     }
     //遍历数组，将前一次的结果传入处理函数进行累计处理
@@ -53,10 +57,14 @@ var Zepto = (function() {
     document = window.document,
     elementDisplay = {}, classCache = {},
     getComputedStyle = document.defaultView.getComputedStyle,
+
+     // Introduced in DOM Level 2:
+     //getComputedStyle(in Element elt,in DOMString pseudoElt);
+
     //设置CSS时，不用加px单位的属性
     cssNumber = {
-      'column-count': 1,
-      'columns': 1,
+      'column-count': 1,   //规定元素应该被分隔的列数。 column-count:3;
+      'columns': 1,   //规定设置 column-width 和 column-count 的简写属性。 columns:100px 3;
       'font-weight': 1,
       'line-height': 1,
       'opacity': 1,
