@@ -169,43 +169,53 @@ var Zepto = (function() {
   function isObject(obj) {
     return type(obj) == "object"
   }
-  //bookmark
+
   //对于通过字面量定义的对象和new Object的对象返回true，new Object时传参数的返回false
   //可参考http://snandy.iteye.com/blog/663245
-
+  //__proto__ 一个对象的__proto__ 属性和自己的内部属性[[Prototype]]指向一个相同的值 (通常称这个值为原型)
+  //Object 传参数
+  //1, 参数是一个对象，核心js对象(native ECMAScript object)或宿主对象(host object)，那么将直接返回该对象
+  //2,参数是基本类型对象，如字符串(String)，数字(Number)，布尔值(Boolean)，将其包装成对象（转换成其对应的包装类）后返回。
   function isPlainObject(obj) {
     return isObject(obj) && !isWindow(obj) && obj.__proto__ == Object.prototype
   }
 
+  //Array.isArray?
+  //type(obj) == 'array' ?
   function isArray(value) {
     return value instanceof Array
   }
-  //类数组，比如nodeList，这个只是做最简单的判断，如果给一个对象定义一个值为数据的length属性，它同样会返回true
 
+  //类数组，比如nodeList，这个只是做最简单的判断，如果给一个对象定义一个值为数据的length属性，它同样会返回true
   function likeArray(obj) {
     return typeof obj.length == 'number'
   }
 
-  //清除给定的参数中的null或undefined，注意0==null,'' == null为false
-
+  //清除给定的参数中的null或undefined，注意: 0 != null,'' != null
+  //compact:压缩
   function compact(array) {
     return filter.call(array, function(item) {
       return item != null
     })
   }
-  //类似得到一个数组的副本
 
+  //不大好： 非空数组返回的是副本 ， 空数组返回的本身
+  //可以讲稀疏数组 变成紧密的
+  //可以数组压平  如：[1,[2,3] ] -> [1,2,3]
   function flatten(array) {
     return array.length > 0 ? $.fn.concat.apply([], array) : array
   }
+
   //将字符串转成驼峰式的格式
+  //eg: a---b -> aB
   camelize = function(str) {
     return str.replace(/-+(.)?/g, function(match, chr) {
       return chr ? chr.toUpperCase() : ''
     })
   }
-  //将字符串格式化成-拼接的形式,一般用在样式属性上，比如border-width
 
+  //bookmark 5.12
+  //将字符串格式化成-拼接的形式,一般用在样式属性上，比如border-width
   function dasherize(str) {
     return str.replace(/::/g, '/') //将：：替换成/
     .replace(/([A-Z]+)([A-Z][a-z])/g, '$1_$2') //在大小写字符之间插入_,大写在前，比如AAAbb,得到AA_Abb
