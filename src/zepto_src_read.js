@@ -689,10 +689,11 @@ var Zepto = (function() {
         })
       } else {
         //当selector为字符串的时候，对集合进行筛选，也就是筛选出集合中满足selector的记录
-        var excludes = typeof selector == 'string' ? this.filter(selector) :
-        //当selector为nodeList时执行slice.call(selector),注意这里的isFunction(selector.item)是为了排除selector为数组的情况
-        //当selector为css选择器，执行$(selector)
-        (likeArray(selector) && isFunction(selector.item)) ? slice.call(selector) : $(selector)
+        var excludes = typeof selector == 'string' ? this.filter(selector) 
+                                                    //当selector为nodeList时执行slice.call(selector),注意这里的isFunction(selector.item)是为了排除selector为数组的情况
+                                                    //当selector为css选择器，执行$(selector)
+                                                   :(likeArray(selector) && isFunction(selector.item)) ? slice.call(selector) 
+                                                                                                      : $(selector)
         this.forEach(function(el) {
           //筛选出不在excludes集合里的记录，达到排除的目的
           if (excludes.indexOf(el) < 0) nodes.push(el)
@@ -725,6 +726,7 @@ var Zepto = (function() {
       //如果集合中的第一条数据本身就已经是zepto对象则直接返回本身，否则转成zepto对象
       //el && !isObject(el)在这里取到一个判断el是否为节点的情况，因为如果el是节点，那么isObject(el)的结果就是true
       return el && !isObject(el) ? el : $(el)
+      //question：直接return $(this[0]) 不行咩?
     },
     /* 
         取集合中的最后一条记录
@@ -740,24 +742,31 @@ var Zepto = (function() {
     find: function(selector) {
       var result, $this = this
       //如果selector为node或者zepto集合时
-      if (typeof selector == 'object')
-      //遍历selector，筛选出父级为集合中记录的selector
-      result = $(selector).filter(function() {
-        var node = this
-        //如果$.contains(parent, node)返回true，则emptyArray.some也会返回true,外层的filter则会收录该条记录
-        return emptyArray.some.call($this, function(parent) {
-          return $.contains(parent, node)
+      if (typeof selector == 'object'){
+        //遍历selector，筛选出父级为集合中记录的selector
+        result = $(selector).filter(function() {
+          var node = this
+          //如果$.contains(parent, node)返回true，则emptyArray.some也会返回true,外层的filter则会收录该条记录
+          return emptyArray.some.call($this, function(parent) {
+            return $.contains(parent, node)
+          })
         })
-      })
+      }
       //如果selector是css选择器
       //如果当前集合长度为1时，调用zepto.qsa，将结果转成zepto对象
-      else if (this.length == 1) result = $(zepto.qsa(this[0], selector))
+      else if (this.length == 1) {
+        result = $(zepto.qsa(this[0], selector))
+      }
       //如果长度大于1，则调用map遍历
-      else result = this.map(function() {
-        return zepto.qsa(this, selector)
-      })
+      else {
+        //this.map 中会对数组进行放平处理
+        result = this.map(function() {
+          return zepto.qsa(this, selector)
+        })
+      }
       return result
     },
+    //bookmark:5/13 18:39
     //取集合中第一记录的最近的满足条件的父级元素
     closest: function(selector, context) {
       var node = this[0],
