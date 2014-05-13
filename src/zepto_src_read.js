@@ -457,14 +457,23 @@ var Zepto = (function() {
   function filtered(nodes, selector) {
     return selector === undefined ? $(nodes) : $(nodes).filter(selector)
   }
-  //判断parent是否包含node
+  //判断parent是否包含node 
+  //parent和node相等时 返回false
+  //parent和node都是html节点
+  //contains 起先用在 IE ，用来确定 DOM Node 是否包含在另一个 DOM Element 中。 现在firefox（30）已支持该方法
+  // function contains(a, b) {
+  //  return a.contains ? a != b && a.contains(b) : !!(a.compareDocumentPosition(arg) & 16);
+  // }
+  //compareDocumentPosition (DOM3)确定 2 个 DOM Node 之间的相互位置
+  //
   $.contains = function(parent, node) {
     return parent !== node && parent.contains(node)
   }
 
-  //这个函数在整个库中取着很得要的作用，处理arg为函数或者值的情况
-  //下面很多设置元素属性时的函数都有用到
-
+  //这个函数在整个库中起着很得要的作用，处理arg为函数或者值的情况
+  //下面很多设置元素属性时的函数都有用到 payload用于存放调用函数时需要传递的数据 
+  //eg:$(obj).val(value)  self
+  //   $(obj).val(function(index, oldValue){ ... })  此处oldValue为oldValue
   function funcArg(context, arg, idx, payload) {
     return isFunction(arg) ? arg.call(context, idx, payload) : arg
   }
@@ -475,7 +484,7 @@ var Zepto = (function() {
   }
 
   // access className property while respecting SVGAnimatedString
-
+  // question：svg特殊处理？
   function className(node, value) {
     var klass = node.className,
       svg = klass && klass.baseVal !== undefined
@@ -489,9 +498,12 @@ var Zepto = (function() {
   // "null"  => null
   // "42"    => 42
   // "42.5"  => 42.5
-  // JSON    => parse if valid
+  // "JSON string"    => parse if valid
   // String  => self
-
+  // "undefined" => "undefined"
+  // undefined => undefined
+  // 
+  //反序列化 string -> object
   function deserializeValue(value) {
     var num
     try {
@@ -507,17 +519,24 @@ var Zepto = (function() {
   $.isArray = isArray
   $.isPlainObject = isPlainObject
 
-  //空对象
+  //空对象 没有属性 
+  //question:原型链中有可枚举的属性时也不算空对象？
   $.isEmptyObject = function(obj) {
-    var name
-    for (name in obj) return false
-    return true
+    var name;
+    for (name in obj) {
+      return false
+    }
+    return true;
   }
 
   //获取指定的值在数组中的位置
+  //$.inArray(element, array, [fromIndex]) 
+  //Get the position of element inside an array, or -1 if not found.
+  //es5 array.indexOf(v[,start])
   $.inArray = function(elem, array, i) {
     return emptyArray.indexOf.call(array, elem, i)
   }
+
   //将字符串转成驼峰式的格式
   $.camelCase = camelize
   //去字符串头尾空格
@@ -525,13 +544,15 @@ var Zepto = (function() {
     return str.trim()
   }
 
-  // plugin compatibility
+  // plugin compatibility（兼容性）
   $.uuid = 0
   $.support = {}
-  $.expr = {}
+  $.expr = {}  //question:不知道做啥用的
 
   //遍历elements，将每条记录放入callback里进宪处理，保存处理函数返回值不为null或undefined的结果
   //注意这里没有统一的用for in,是为了避免遍历数据默认属性的情况，如数组的toString,valueOf
+  //array用len，object用in
+  //$.map(collection, function(item, index){ ... })  
   $.map = function(elements, callback) {
     var value, values = [],
       i, key
@@ -545,11 +566,14 @@ var Zepto = (function() {
       value = callback(elements[key], key)
       if (value != null) values.push(value)
     }
+    //放平
     return flatten(values)
   }
 
   //遍历数组，将每条数据作为callback的上下文，并传入数据以及数据的索引进行处理，如果其中一条数据的处理结果明确返回false，
   //则停止遍历，并返回elements
+  //array用len，object用in
+  //$.each(collection, function(index, item){ ... })
   $.each = function(elements, callback) {
     var i, key
     if (likeArray(elements)) {
@@ -563,6 +587,7 @@ var Zepto = (function() {
     return elements
   }
   //过滤
+  //$.grep(items, function(item){ ... })
   $.grep = function(elements, callback) {
     return filter.call(elements, callback)
   }
@@ -590,15 +615,16 @@ var Zepto = (function() {
 
     // `map` and `slice` in the jQuery API work differently
     // from their array counterparts
+    // 交换参数
     map: function(fn) {
-      return $($.map(this, function(el, i) {
+      return $($.map(this, function(el, i) {  //此处this将是dom数组
         return fn.call(el, i, el)
       }))
     },
     slice: function() {
       return $(slice.apply(this, arguments))
     },
-    //DOM Ready
+    //DOM Ready 真简单的ready
     ready: function(callback) {
       if (readyRE.test(document.readyState)) callback($)
       else document.addEventListener('DOMContentLoaded', function() {
@@ -607,6 +633,7 @@ var Zepto = (function() {
       return this
     },
     //取集合中对应指定索引的值，如果idx小于0,则idx等于idx+length,length为集合的长度
+    //idx为undefined时 返回所有的节点的数组副本
     get: function(idx) {
       return idx === undefined ? slice.call(this) : this[idx >= 0 ? idx : idx + this.length]
     },
@@ -626,12 +653,14 @@ var Zepto = (function() {
     },
     //遍历集合，将集合中的每一项放入callback中进行处理，去掉结果为false的项，注意这里的callback如果明确返回false
     //那么就会停止循环了
+    //emptyArray.every（function(array[i],i,array){}）会在第一次获得false时返回 短路
     each: function(callback) {
       emptyArray.every.call(this, function(el, idx) {
         return callback.call(el, idx, el) !== false
       })
       return this
     },
+    //bookmark 5/13 16:40
     //过滤集合，返回处理结果为true的记录
     filter: function(selector) {
       //this.not(selector)取到需要排除的集合，第二次再取反(这个时候this.not的参数就是一个集合了)，得到想要的集合
