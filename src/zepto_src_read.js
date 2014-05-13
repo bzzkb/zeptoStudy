@@ -226,8 +226,7 @@ var Zepto = (function() {
     })
   }
 
-  //bookmark 5.12
-  //将字符串格式化成-拼接的形式,一般用在样式属性上，比如border-width
+  //将字符串格式化成-拼接的形式,一般用在样式属性上，比如borderWidth -> border-width
   function dasherize(str) {
     return str.replace(/::/g, '/') //将：：替换成/
     .replace(/([A-Z]+)([A-Z][a-z])/g, '$1_$2') //在大小写字符之间插入_,大写在前，比如AAAbb,得到AA_Abb
@@ -242,19 +241,18 @@ var Zepto = (function() {
     })
   }
 
-  //将给定的参数生成正则
-
+  //将给定的参数生成正则  用来匹配元素的class值
   function classRE(name) {
     //classCache,缓存正则
     return name in classCache ? classCache[name] : (classCache[name] = new RegExp('(^|\\s)' + name + '(\\s|$)'))
   }
-  //给需要的样式值后面加上'px'单位，除了cssNumber里面的指定的那些
 
+  //给需要的样式值后面加上'px'单位，除了cssNumber里面的指定的那些
   function maybeAddPx(name, value) {
     return (typeof value == "number" && !cssNumber[dasherize(name)]) ? value + "px" : value
   }
-  //获取节点的默认display属性
 
+  //获取节点的默认display属性
   function defaultDisplay(nodeName) {
     var element, display
     if (!elementDisplay[nodeName]) { //缓存里不存在
@@ -263,14 +261,18 @@ var Zepto = (function() {
       display = getComputedStyle(element, '').getPropertyValue("display")
       element.parentNode.removeChild(element)
       display == "none" && (display = "block") //当display等于none时，设置其值为block,搞不懂为毛要这样
+      //我也不知道
       elementDisplay[nodeName] = display //缓存元素的默认display属性
     }
     return elementDisplay[nodeName]
   }
-  //获取指定元素的子节点(不包含文本节点),Firefox不支持children，所以只能通过筛选childNodes
 
+  //获取指定元素的子节点(不包含文本节点),Firefox不支持children，所以只能通过筛选childNodes
+  //children（获取子元素节点） childNodes获取子节点 
+  //返回节点数组
   function children(element) {
     return 'children' in element ? slice.call(element.children) : $.map(element.childNodes, function(node) {
+      //nodeType 1为元素节点
       if (node.nodeType == 1) return node
     })
   }
@@ -280,26 +282,46 @@ var Zepto = (function() {
   // The generated DOM nodes are returned as an array.
   // This function can be overriden in plugins for example to make
   // it compatible with browsers that don't support the DOM fully.
+  // 将html代码片段转化为dom节点后返回，若有属性参数，则将为每一个节点设置属性
   zepto.fragment = function(html, name, properties) {
     //将类似<div class="test"/>替换成<div class="test"></div>,算是一种修复吧
+    //tagExpanderRE = /<(?!area|br|col|embed|hr|img|input|link|meta|param)(([\w:]+)[^>]*)\/>/ig,
+    //question: 冒号是怎么回事
+    //$('<div/>')
     if (html.replace) html = html.replace(tagExpanderRE, "<$1></$2>")
     //给name取标签名
+    //  fragmentRE = /^\s*<(\w+|!)[^>]*>/,
+    //question: 感叹号是怎么回事
     if (name === undefined) name = fragmentRE.test(html) && RegExp.$1
     //设置容器标签名，如果不是tr,tbody,thead,tfoot,td,th，则容器标签名为div
+    //containers = {
+    //   'tr': document.createElement('tbody'),
+    //   'tbody': table,
+    //   'thead': table,
+    //   'tfoot': table,
+    //   'td': tableRow,
+    //   'th': tableRow,
+    //   '*': document.createElement('div')
+    // }
     if (!(name in containers)) name = '*'
 
     var nodes, dom, container = containers[name] //创建容器
     container.innerHTML = '' + html //将html代码片断放入容器
     //取容器的子节点，这样就直接把字符串转成DOM节点了
+    //$.each将会返回子节点的数组
     dom = $.each(slice.call(container.childNodes), function() {
       container.removeChild(this) //逐个删除
     })
     //如果properties是对象, 则将其当作属性来给添加进来的节点进行设置
     if (isPlainObject(properties)) {
       nodes = $(dom) //将dom转成zepto对象，为了方便下面调用zepto上的方法
+      // $ = function(selector, context) {
+      //   return zepto.init(selector, context)
+      // }
       //遍历对象，设置属性
       $.each(properties, function(key, value) {
         //如果设置的是'val', 'css', 'html', 'text', 'data', 'width', 'height', 'offset'，则调用zepto上相对应的方法
+        //methodAttributes = ['val', 'css', 'html', 'text', 'data', 'width', 'height', 'offset'],
         if (methodAttributes.indexOf(key) > -1) nodes[key](value)
         else nodes.attr(key, value)
       })
@@ -312,24 +334,35 @@ var Zepto = (function() {
   // of nodes with `$.fn` and thus supplying all the Zepto functions
   // to the array. Note that `__proto__` is not supported on Internet
   // Explorer. This method can be overriden in plugins.
+  // 将dom数组转为为zepto包装对象，包装对象会获得$.fn的所有方法，并设置额外属性selector
   zepto.Z = function(dom, selector) {
     dom = dom || []
     dom.__proto__ = $.fn //通过给dom设置__proto__属性指向$.fn来达到继承$.fn上所有方法的目的
     dom.selector = selector || ''
     return dom
   }
+  //后面设置了 zepto.Z.prototype = $.fn 
 
   // `$.zepto.isZ` should return `true` if the given object is a Zepto
   // collection. This method can be overriden in plugins.
   //判断给定的参数是否是Zepto集
+  // 因为zepto.Z.prototype = $.fn = object.__proto__ 
   zepto.isZ = function(object) {
+    //object的原型链中能找到zepto.Z的原型
     return object instanceof zepto.Z
   }
 
-  // `$.zepto.init` is Zepto's counterpart to jQuery's `$.fn.init` and
+  // `$.zepto.init` is Zepto's counterpart（替代物） to jQuery's `$.fn.init` and
   // takes a CSS selector and an optional context (and handles various
   // special cases).
   // This method can be overriden in plugins.
+  // 其实就是相当于jquery的$
+  // $(selector, [context])  -> collection
+  // $(<Zepto collection>)  -> same collection
+  // $(<DOM nodes>)  -> collection
+  // $(htmlString)  -> collection
+  // $(htmlString, attributes)  -> collection 
+  // Zepto(function($){ ... }) 
   zepto.init = function(selector, context) {
     // If nothing given, return an empty Zepto collection
     if (!selector) return zepto.Z() //没有参数，返回空数组
@@ -346,7 +379,7 @@ var Zepto = (function() {
       //如果是申明的对象，如{}， 则将selector属性copy到一个新对象，并将结果放入数组
       //如果是该对象是DOM，则直接放到数组中
       dom = [isPlainObject(selector) ? $.extend({}, selector) : selector], selector = null
-      //如果selector是一段HTML代码片断，则将其转换成DOM节点
+      //如果selector是一段HTML代码片断，则将其转换成DOM节点 此时context当做要设置的属性数据
       else if (fragmentRE.test(selector)) dom = zepto.fragment(selector.trim(), RegExp.$1, context), selector = null
       //如果存在上下文context，则在上下文中查找selector，此时的selector为普通的CSS选择器
       else if (context !== undefined) return $(context).find(selector)
@@ -366,7 +399,6 @@ var Zepto = (function() {
   }
 
   //扩展，deep表示是否深度扩展
-
   function extend(target, source, deep) {
     for (key in source)
     //如果深度扩展
@@ -388,6 +420,7 @@ var Zepto = (function() {
       target = args.shift() //target取第二个参数
     }
     //遍历后面的参数，全部扩展到target上
+    //从前到后，同名属性依次合并/覆盖，以最后的为准
     args.forEach(function(arg) {
       extend(target, arg, deep)
     })
@@ -421,7 +454,6 @@ var Zepto = (function() {
   }
 
   //在结果中进行过滤
-
   function filtered(nodes, selector) {
     return selector === undefined ? $(nodes) : $(nodes).filter(selector)
   }
