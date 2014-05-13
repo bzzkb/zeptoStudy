@@ -110,6 +110,7 @@ var Zepto = (function() {
     tempParent = document.createElement('div');
 
   //判断一个元素是否匹配给定的选择器
+  //无匹配返回0（false）或有匹配返回其他数字（true）
   zepto.matches = function(element, selector) {
     if (!element || element.nodeType !== 1) return false
 //      Node.ELEMENT_NODE (1)
@@ -126,14 +127,21 @@ var Zepto = (function() {
 //      Node.NOTATION_NODE (12)
     //引用浏览器提供的MatchesSelector方法
     var matchesSelector = element.webkitMatchesSelector || element.mozMatchesSelector || element.oMatchesSelector || element.matchesSelector
-    if (matchesSelector) return matchesSelector.call(element, selector);
+    if (matchesSelector) {
+      return matchesSelector.call(element, selector);
+    }
     //如果浏览器不支持MatchesSelector方法，则将节点放入一个临时div节点，
     //再通过selector来查找这个div下的节点集，再判断给定的element是否在节点集中，如果在，则返回一个非零(即非false)的数字
     // fall back to performing a selector:
-    var match, parent = element.parentNode,temp = !parent
+    var match, parent = element.parentNode,temp = !parent；
     //当element没有父节点，那么将其插入到一个临时的div里面
-    if (temp)(parent = tempParent).appendChild(element)
+    if (temp){
+      (parent = tempParent).appendChild(element)
+    }
     //将parent作为上下文，来查找selector的匹配结果，并获取element在结果集的索引，不存在时为－1,再通过~-1转成0，存在时返回一个非零的值
+    //qsa(querySelectorAll): Zepto's CSS selector implementation 
+    //~number:将-1转为0， 其他数字转为非0，
+    // 返回满足条件元素的数组或空数组
     match = ~zepto.qsa(parent, selector).indexOf(element)
     //将插入的节点删掉
     temp && tempParent.removeChild(element)
@@ -141,9 +149,20 @@ var Zepto = (function() {
   }
 
   //获取对象类型 
-
+  //class2type = {
+  //     "[object Boolean]": "boolean",
+  //     "[object Number]": "number",
+  //     "[object String]": "string",
+  //     "[object Function]": "function",
+  //     "[object Array]": "array",
+  //     "[object Date]": "date",
+  //     "[object RegExp]": "regexp",
+  //     "[object Object]": "object",
+  //     "[object Error]": "error"
+  // }
   function type(obj) {
     //obj为null或者undefined时，直接返回'null'或'undefined'
+    //null == undefined
     return obj == null ? String(obj) : class2type[toString.call(obj)] || "object"
   }
 
@@ -162,42 +181,53 @@ var Zepto = (function() {
   function isObject(obj) {
     return type(obj) == "object"
   }
+
   //对于通过字面量定义的对象和new Object的对象返回true，new Object时传参数的返回false
   //可参考http://snandy.iteye.com/blog/663245
-
+  //__proto__ 一个对象的__proto__ 属性和自己的内部属性[[Prototype]]指向一个相同的值 (通常称这个值为原型)
+  //Object 传参数
+  //1, 参数是一个对象，核心js对象(native ECMAScript object)或宿主对象(host object)，那么将直接返回该对象
+  //2,参数是基本类型对象，如字符串(String)，数字(Number)，布尔值(Boolean)，将其包装成对象（转换成其对应的包装类）后返回。
   function isPlainObject(obj) {
     return isObject(obj) && !isWindow(obj) && obj.__proto__ == Object.prototype
   }
 
+  //Array.isArray?
+  //type(obj) == 'array' ?
   function isArray(value) {
     return value instanceof Array
   }
-  //类数组，比如nodeList，这个只是做最简单的判断，如果给一个对象定义一个值为数据的length属性，它同样会返回true
 
+  //类数组，比如nodeList，这个只是做最简单的判断，如果给一个对象定义一个值为数据的length属性，它同样会返回true
   function likeArray(obj) {
     return typeof obj.length == 'number'
   }
 
-  //清除给定的参数中的null或undefined，注意0==null,'' == null为false
-
+  //清除给定的参数中的null或undefined，注意: 0 != null,'' != null
+  //compact:压缩
   function compact(array) {
     return filter.call(array, function(item) {
       return item != null
     })
   }
-  //类似得到一个数组的副本
 
+  //不大好： 非空数组返回的是副本 ， 空数组返回的本身
+  //可以讲稀疏数组 变成紧密的
+  //可以数组压平  如：[1,[2,3] ] -> [1,2,3]
   function flatten(array) {
     return array.length > 0 ? $.fn.concat.apply([], array) : array
   }
+
   //将字符串转成驼峰式的格式
+  //eg: a---b -> aB
   camelize = function(str) {
     return str.replace(/-+(.)?/g, function(match, chr) {
       return chr ? chr.toUpperCase() : ''
     })
   }
-  //将字符串格式化成-拼接的形式,一般用在样式属性上，比如border-width
 
+  //bookmark 5.12
+  //将字符串格式化成-拼接的形式,一般用在样式属性上，比如border-width
   function dasherize(str) {
     return str.replace(/::/g, '/') //将：：替换成/
     .replace(/([A-Z]+)([A-Z][a-z])/g, '$1_$2') //在大小写字符之间插入_,大写在前，比如AAAbb,得到AA_Abb
@@ -367,22 +397,27 @@ var Zepto = (function() {
   // `$.zepto.qsa` is Zepto's CSS selector implementation which
   // uses `document.querySelectorAll` and optimizes for some special cases, like `#id`.
   // This method can be overriden in plugins.
+  // 返回满足条件元素的数组或空数组
   zepto.qsa = function(element, selector) {
     var found
     //当element为document,且selector为ID选择器时
-    return (isDocument(element) && idSelectorRE.test(selector)) ?
+    //idSelectorRE = /^#([\w-]*)$/,
+    return (isDocument(element) && idSelectorRE.test(selector)) 
     //直接返回document.getElementById,RegExp.$1为ID的值,当没有找节点时返回[]
-    ((found = element.getElementById(RegExp.$1)) ? [found] : []) :
-    //当element不为元素节点或者document时，返回[]
-    (element.nodeType !== 1 && element.nodeType !== 9) ? [] :
-    //否则将获取到的结果转成数组并返回
-    slice.call(
-    //如果selector是标签名,直接调用getElementsByClassName
-    classSelectorRE.test(selector) ? element.getElementsByClassName(RegExp.$1) :
-    //如果selector是标签名,直接调用getElementsByTagName
-    tagSelectorRE.test(selector) ? element.getElementsByTagName(selector) :
-    //否则调用querySelectorAll
-    element.querySelectorAll(selector))
+      ?((found = element.getElementById(RegExp.$1)) ? [found] : []) 
+      //当element不为元素节点或者document时，返回[]
+      :(element.nodeType !== 1 && element.nodeType !== 9) ? [] 
+                                                            //否则将获取到的结果转成数组并返回
+                                                          : slice.call(
+                                                              //如果selector是标签名,直接调用getElementsByClassName
+                                                              //classSelectorRE = /^\.([\w-]+)$/,
+                                                              classSelectorRE.test(selector) ? element.getElementsByClassName(RegExp.$1) 
+                                                                //如果selector是标签名,直接调用getElementsByTagName
+                                                                //tagSelectorRE = /^[\w-]+$/,
+                                                                                            :tagSelectorRE.test(selector) ? element.getElementsByTagName(selector) 
+                                                                                                                          //否则调用querySelectorAll
+                                                                                                                          :element.querySelectorAll(selector)
+                                                            )
   }
 
   //在结果中进行过滤
