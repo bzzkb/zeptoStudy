@@ -973,10 +973,14 @@ var Zepto = (function() {
       this.each(function(idx) {
         if (this.nodeType !== 1) return
         //如果name是一个对象，如{'id':'test','value':11},则给数据设置属性
-        if (isObject(name)) for (key in name) setAttribute(this, key, name[key])
+        if (isObject(name)) {
+          for (key in name) setAttribute(this, key, name[key])
+        }
         //如果name只是一个普通的属性字符串，用funcArg来处理value是值或者function的情况最终返回一个属性值
         //如果funcArg函数返回的是undefined或者null，则相当于删除元素的属性
-        else setAttribute(this, name, funcArg(this, value, idx, this.getAttribute(name)))
+        else {
+          setAttribute(this, name, funcArg(this, value, idx, this.getAttribute(name)))
+        }
       })
     },
     removeAttr: function(name) {
@@ -1005,25 +1009,34 @@ var Zepto = (function() {
         this.value = funcArg(this, value, idx, this.value)
       })
     },
+    //在匹配的元素集合中，获取的第一个元素的当前坐标，获取到的是相对于文档的坐标
+    //或设置每一个元素的坐标，坐标相对于文档。用相对于文档的坐标计算出相对于offsetparent的偏移，
+    //设置其top和left，以达到其最终坐标的设定为传入的文档坐标
     offset: function(coordinates) {
-      if (coordinates) return this.each(function(index) {
-        var $this = $(this),
-          //coordinates为{}时直接返回，为函数时返回处理结果给coords
-          coords = funcArg(this, coordinates, index, $this.offset()),
-          //取父级的offset
-          parentOffset = $this.offsetParent().offset(),
-          //计算出它们之间的差，得出其偏移量  
-          props = {
-            top: coords.top - parentOffset.top,
-            left: coords.left - parentOffset.left
+      if (coordinates) {
+        return this.each(function(index) {
+          var $this = $(this),
+            //coordinates为{}时直接返回，为函数时返回处理结果给coords
+            coords = funcArg(this, coordinates, index, $this.offset()),
+            //取父级的offset
+            parentOffset = $this.offsetParent().offset(),
+            //计算出它们之间的差，得出其偏移量  
+            props = {
+              top: coords.top - parentOffset.top,
+              left: coords.left - parentOffset.left
+            };
+            //注意元素的position为static时，设置top,left是无效的
+          if ($this.css('position') == 'static') {
+            props['position'] = 'relative'
           }
-          //注意元素的position为static时，设置top,left是无效的
-        if ($this.css('position') == 'static') props['position'] = 'relative'
-        $this.css(props)
-      })
+          $this.css(props);
+        });
+      }
       //取第一条记录的offset,包括offsetTop,offsetLeft,offsetWidth,offsetHeight
-      if (this.length == 0) return null
-      var obj = this[0].getBoundingClientRect()
+      if (this.length == 0) {
+        return null
+      }
+      var obj = this[0].getBoundingClientRect();
       //window.pageYOffset就是类似Math.max(document.documentElement.scrollTop||document.body.scrollTop)
       return {
         left: obj.left + window.pageXOffset,
