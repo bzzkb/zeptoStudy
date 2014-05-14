@@ -1036,6 +1036,10 @@ var Zepto = (function() {
       if (this.length == 0) {
         return null
       }
+      //getBoundingClientRect获取元素位置 
+
+      //getBoundingClientRect用于获得页面中某个元素的左，上，右和下分别相对浏览器视窗的位置。
+      //getBoundingClientRect是DOM元素到浏览器可视范围的距离（不包含文档卷起的部分）
       var obj = this[0].getBoundingClientRect();
       //window.pageYOffset就是类似Math.max(document.documentElement.scrollTop||document.body.scrollTop)
       return {
@@ -1047,27 +1051,38 @@ var Zepto = (function() {
     },
     css: function(property, value) {
       //获取指定的样式
-      if (arguments.length < 2 && typeof property == 'string') return this[0] && (this[0].style[camelize(property)] || getComputedStyle(this[0], '').getPropertyValue(property))
+      //返回内联样式 或者计算出的样式
+      if (arguments.length < 2 && typeof property == 'string') {
+        return this[0] && (this[0].style[camelize(property)] || getComputedStyle(this[0], '').getPropertyValue(property))
+      }
       //设置样式
       var css = ''
       if (type(property) == 'string') {
-        if (!value && value !== 0) //当value的值为非零的可以转成false的值时如(null,undefined)，删掉property样式
-        this.each(function() {
-          //style.removeProperty 移除指定的CSS样式名(IE不支持DOM的style方法)
-          this.style.removeProperty(dasherize(property))
-        })
-        else css = dasherize(property) + ":" + maybeAddPx(property, value)
+        if (!value && value !== 0){ //当value的值为非零的可以转成false的值时如(null,undefined)，删掉property样式
+          this.each(function() {
+            //style.removeProperty 移除指定的CSS样式名(IE不支持DOM的style方法)
+            this.style.removeProperty(dasherize(property))
+          })
+        }
+        else {
+          css = dasherize(property) + ":" + maybeAddPx(property, value)
+        }
       } else {
         //当property是对象时
-        for (key in property)
-        if (!property[key] && property[key] !== 0)
-        //当property[key]的值为非零的可以转成false的值时，删掉key样式
-        this.each(function() {
-          this.style.removeProperty(dasherize(key))
-        })
-        else css += dasherize(key) + ':' + maybeAddPx(key, property[key]) + ';'
+        for (key in property){
+          if (!property[key] && property[key] !== 0){
+            //当property[key]的值为非零的可以转成false的值时，删掉key样式
+            //this.style是一个实时属性
+            this.each(function() {
+              this.style.removeProperty(dasherize(key))
+            })
+          }
+          else {
+            css += dasherize(key) + ':' + maybeAddPx(key, property[key]) + ';'
+          }
+        }
       }
-      //设置
+      //设置内联样式
       return this.each(function() {
         this.style.cssText += ';' + css
       })
@@ -1076,6 +1091,7 @@ var Zepto = (function() {
       //这里的$(element)[0]是为了将字符串转成node,因为this是个包含node的数组
       //当不指定element时，取集合中第一条记录在其父节点的位置
       //this.parent().children().indexOf(this[0])这句很巧妙，和取第一记录的parent().children().indexOf(this)相同
+      //question：为什么不用$(this[0]).parent().children().indexOf(this[0])?
       return element ? this.indexOf($(element)[0]) : this.parent().children().indexOf(this[0])
     },
     hasClass: function(name) {
@@ -1096,6 +1112,7 @@ var Zepto = (function() {
           classList.length && className(this, cls + (cls ? " " : "") + classList.join(" "))
       })
     },
+    //name为空时 移除所有的class
     removeClass: function(name) {
       return this.each(function(idx) {
         if (name === undefined) return className(this, '')
@@ -1115,10 +1132,14 @@ var Zepto = (function() {
           })
       })
     },
+    //获取匹配的元素集合中第一个元素的当前垂直滚动条的位置
     scrollTop: function() {
-      if (!this.length) return
+      if (!this.length) {
+        return
+      }
       return ('scrollTop' in this[0]) ? this[0].scrollTop : this[0].scrollY
     },
+    //获取匹配元素中第一个元素的当前坐标，相对于offset parent的坐标。
     position: function() {
       if (!this.length) return
 
@@ -1132,7 +1153,7 @@ var Zepto = (function() {
           left: 0
         } : offsetParent.offset()
 
-        // Subtract element margins
+        // Subtract(减去) element margins
         // note: when an element has margin: auto the offsetLeft and marginLeft
         // are the same in Safari causing offset.left to incorrectly be 0
         offset.top -= parseFloat($(elem).css('margin-top')) || 0
@@ -1148,11 +1169,29 @@ var Zepto = (function() {
         left: offset.left - parentOffset.left
       }
     },
+    // The offsetParent attribute must return the result of running these steps:
+
+    // 1, If any of the following holds true return null and terminate this algorithm:
+
+      // The element does not have an associated CSS layout box.
+      // The element is the root element.
+      // The element is the HTML body element.
+      // The element's computed value of the 'position' property is 'fixed'.
+    // 
+    // 2,Return the nearest ancestor element of the element for which at least one of the following is true and terminate this algorithm if such an ancestor is found:
+
+      // The computed value of the 'position' property is not 'static'.
+      // It is the HTML body element.
+      // The computed value of the 'position' property of the element is 'static' and the ancestor is one of the following HTML elements: td, th, or table.
+    // 
+    // 3, Return null.
     offsetParent: function() {
       return this.map(function() {
-        var parent = this.offsetParent || document.body
-        while (parent && !rootNodeRE.test(parent.nodeName) && $(parent).css("position") == "static")
-        parent = parent.offsetParent
+        var parent = this.offsetParent || document.body;
+
+        while (parent && !rootNodeRE.test(parent.nodeName) && $(parent).css("position") == "static"){
+          parent = parent.offsetParent
+        }
         return parent
       })
     }
@@ -1160,7 +1199,7 @@ var Zepto = (function() {
 
   // for now
   $.fn.detach = $.fn.remove
-
+  //bookmark 5/14 18:01 ling 1202
   // Generate the `width` and `height` functions
   ;
   ['width', 'height'].forEach(function(dimension) {
