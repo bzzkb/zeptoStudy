@@ -768,6 +768,9 @@ var Zepto = (function() {
     },
     //bookmark:5/13 18:39
     //取集合中第一记录的最近的满足条件的父级元素
+    //$("a").closest($("a").get(0)) => $("a").get(0) ? 
+    //$("a").closest() => $() ?
+    //jquery也是
     closest: function(selector, context) {
       var node = this[0],
         collection = false
@@ -775,8 +778,8 @@ var Zepto = (function() {
       //当selector是node或者zepto集合时，如果node不在collection集合中时需要取node.parentNode进行判断
       //当selector是字符串选择器时，如果node与selector不匹配，则需要取node.parentNode进行判断
       while (node && !(collection ? collection.indexOf(node) >= 0 : zepto.matches(node, selector)))
-      //当node 不是context,document的时候，取node.parentNode
-      node = node !== context && !isDocument(node) && node.parentNode
+        //当node 不是context,document的时候，取node.parentNode
+        node = node !== context && !isDocument(node) && node.parentNode
       return $(node)
     },
     //取集合所有父级元素
@@ -786,33 +789,40 @@ var Zepto = (function() {
         //通过遍历nodes得到所有父级，注意在while里nodes被重新赋值了
         //本函数的巧妙之处在于，不停在获取父级，再遍历父级获取父级的父级
         //然后再通过去重，得到最终想要的结果，当到达最顶层的父级时，nodes.length就为0了
-      while (nodes.length > 0)
-      //nodes被重新赋值为收集到的父级集合
-      nodes = $.map(nodes, function(node) {
-        //遍历nodes，收集集合的第一层父级
-        //ancestors.indexOf(node) < 0用来去重复
-        if ((node = node.parentNode) && !isDocument(node) && ancestors.indexOf(node) < 0) {
-          ancestors.push(node) //收集已经获取到的父级元素，用于去重复
-          return node
-        }
-      })
+      while (nodes.length > 0){
+        //nodes被重新赋值为收集到的父级集合
+        //$.map会去除null和undefined 原生的array.map不会
+        //所有nodes的通过去重后长度会变短
+        nodes = $.map(nodes, function(node) {
+          //遍历nodes，收集集合的第一层父级
+          //ancestors.indexOf(node) < 0用来去重复
+          if ((node = node.parentNode) && !isDocument(node) && ancestors.indexOf(node) < 0) {
+            ancestors.push(node) //收集已经获取到的父级元素，用于去重复
+            return node
+          }
+        })
+      }
       //上面还只是取到了所有的父级元素，这里还需要对其进行筛选从而得到最终想要的结果
       return filtered(ancestors, selector)
     },
     //获取集合的父节点
+    //pluck 根据属性来获取当前集合的相关集合
     parent: function(selector) {
       return filtered(uniq(this.pluck('parentNode')), selector)
     },
+    //this.map会打平数组里的数组
     children: function(selector) {
       return filtered(this.map(function() {
         return children(this)
       }), selector)
     },
+    //包含文本节点和注释节点等
     contents: function() {
       return this.map(function() {
         return slice.call(this.childNodes)
       })
     },
+    //前后的兄弟（ji you）节点
     siblings: function(selector) {
       return filtered(this.map(function(i, el) {
         //先获取该节点的父节点中的所有子节点，再排除本身
@@ -821,42 +831,48 @@ var Zepto = (function() {
         })
       }), selector)
     },
+    //清空子节点
     empty: function() {
       return this.each(function() {
         this.innerHTML = ''
       })
     },
-    //根据属性来获取当前集合的相关集合
+    //根据属性来获取当前集合的相关集合 pluck 采，拉，摘
     pluck: function(property) {
       return $.map(this, function(el) {
         return el[property]
       })
     },
+    //设置display为none的为默认样式
     show: function() {
       return this.each(function() {
         //清除元素的内联display="none"的样式
         this.style.display == "none" && (this.style.display = null)
         //当样式表里的该元素的display样式为none时，设置它的display为默认值
         if (getComputedStyle(this, '').getPropertyValue("display") == "none") this.style.display = defaultDisplay(this.nodeName) //defaultDisplay是获取元素默认display的方法
-      })
+      });
     },
     replaceWith: function(newContent) {
       //将要替换的内容插入到被替换的内容前面，然后删除被替换的内容
       return this.before(newContent).remove()
     },
+    //wrap是在每一个外面包一个
     wrap: function(structure) {
       var func = isFunction(structure)
-      if (this[0] && !func)
-      //如果structure是字符串，则将其转成DOM
-      var dom = $(structure).get(0),
-        //如果structure是已经存在于页面上的节点或者被wrap的记录不只一条，则需要clone dom
-        clone = dom.parentNode || this.length > 1
+      if (this[0] && !func){
+        //如果structure是字符串，则将其转成DOM
+        var dom = $(structure).get(0),
+            //如果structure是已经存在于页面上的节点或者被wrap的记录不只一条，则需要clone dom
+            clone = dom.parentNode || this.length > 1;
+      }
 
       return this.each(function(index) {
         $(this).wrapAll(
-        func ? structure.call(this, index) : clone ? dom.cloneNode(true) : dom)
+          func ? structure.call(this, index) : clone ? dom.cloneNode(true) : dom
+        );
       })
     },
+    //wrapall是在所有外面包一个
     wrapAll: function(structure) {
       if (this[0]) {
         //将要包裹的内容插入到第一条记录的前面，算是给structure定位围置
@@ -864,7 +880,10 @@ var Zepto = (function() {
         var children
         // drill down to the inmost element
         //取structure里的第一个子节点的最里层
-        while ((children = structure.children()).length) structure = children.first()
+        while ((children = structure.children()).length) {
+          structure = children.first()
+        }
+        //structure为最首最里节点
         //将当前集合插入到最里层的节点里，达到wrapAll的目的
         $(structure).append(this)
       }
@@ -881,6 +900,7 @@ var Zepto = (function() {
           contents.length ? contents.wrapAll(dom) : self.append(dom)
       })
     },
+    //将匹配元素集合的父级元素删除，保留自身（和兄弟元素，如果存在）在原来的位置。
     unwrap: function() {
       //用子元素替换掉父级
       this.parent().each(function() {
@@ -891,13 +911,14 @@ var Zepto = (function() {
     //clone node
     clone: function() {
       return this.map(function() {
-        return this.cloneNode(true)
+        return this.cloneNode(true)  //参数设置为 true，被克隆的节点会复制原始节点的所有子节点。
       })
     },
     //隐藏集合
     hide: function() {
       return this.css("display", "none")
     },
+    //切换显示/隐藏
     toggle: function(setting) {
       return this.each(function() {
         var el = $(this);
@@ -912,6 +933,7 @@ var Zepto = (function() {
     prev: function(selector) {
       return $(this.pluck('previousElementSibling')).filter(selector || '*')
     },
+    //$(selector).filter("*") == $(selector)
     next: function(selector) {
       return $(this.pluck('nextElementSibling')).filter(selector || '*')
     },
@@ -936,14 +958,15 @@ var Zepto = (function() {
         this.textContent = text
       })
     },
+    //bookmark 5/14 13:51
     attr: function(name, value) {
       var result
       //当只有name且为字符串时，表示获取第一条记录的属性
       return (typeof name == 'string' && value === undefined) ?
-      //集合没有记录或者集合的元素不是node类型，返回undefined
-      (this.length == 0 || this[0].nodeType !== 1 ? undefined :
-      //如果取的是input的value
-      (name == 'value' && this[0].nodeName == 'INPUT') ? this.val() :
+        //集合没有记录或者集合的元素不是node类型，返回undefined
+        (this.length == 0 || this[0].nodeType !== 1 ? undefined :
+        //如果取的是input的value
+        (name == 'value' && this[0].nodeName == 'INPUT') ? this.val() :
       //注意直接定义在node上的属性，在标准浏览器和ie9,10中用getAttribute取不到,得到的结果是null
       //比如div.aa = 10,用div.getAttribute('aa')得到的是null,需要用div.aa或者div['aa']这样来取
       (!(result = this[0].getAttribute(name)) && name in this[0]) ? this[0][name] : result) :
