@@ -1302,6 +1302,7 @@ var Zepto = (function() {
   // Export internal API functions in the `$.zepto` namespace
   zepto.uniq = uniq
   zepto.deserializeValue = deserializeValue
+  //抛出zepto便于外部调用zepto下的方法
   $.zepto = zepto
 
   return $
@@ -1370,44 +1371,48 @@ window.Zepto = Zepto;
  */
 ;
 (function($) {
+  // 返回满足条件元素的数组或空数组
+  //zepto.qsa = function(element, selector) 
   var $$ = $.zepto.qsa,
+  //handlers用于保存事件处理函数 key为el的zid,value为{e:e,ns:ns,fn:fn,sel:sel，del：del}
     handlers = {}, _zid = 1,
     specialEvents = {},
+    // 不论鼠标指针穿过被选元素或其子元素，都会触发 mouseover 事件,会冒泡。对应mouseout
+    // 只有在鼠标指针穿过被选元素时，才会触发 mouseenter 事件，不会冒泡。对应mouseleave
     hover = {
       mouseenter: 'mouseover',
       mouseleave: 'mouseout'
     }
-
+  //事件类型为MouseEvents的 用于手动创建事件
   specialEvents.click = specialEvents.mousedown = specialEvents.mouseup = specialEvents.mousemove = 'MouseEvents'
 
-  //取element的唯一标示符，如果没有，则设置一个并返回
-
+  //取element/function的唯一标示符，如果没有，则设置一个并返回
   function zid(element) {
     return element._zid || (element._zid = _zid++)
   }
-  //查找绑定在元素上的指定类型的事件处理函数集合
 
+  //查找绑定在元素上的指定类型的事件处理函数集合
   function findHandlers(element, event, fn, selector) {
     event = parse(event)
-    if (event.ns) var matcher = matcherFor(event.ns)
+    if (event.ns) {
+      var matcher = matcherFor(event.ns)
+    }
     return (handlers[zid(element)] || []).filter(function(handler) {
       return handler && (!event.e || handler.e == event.e) //判断事件类型是否相同
-      &&
-      (!event.ns || matcher.test(handler.ns)) //判断事件命名空间是否相同
+      &&(!event.ns || matcher.test(handler.ns)) //判断事件命名空间是否相同
       //注意函数是引用类型的数据zid(handler.fn)的作用是返回handler.fn的标示符，如果没有，则给它添加一个，
       //这样如果fn和handler.fn引用的是同一个函数，那么fn上应该也可相同的标示符，
       //这里就是通过这一点来判断两个变量是否引用的同一个函数
-      &&
-      (!fn || zid(handler.fn) === zid(fn)) && (!selector || handler.sel == selector)
+      &&(!fn || zid(handler.fn) === zid(fn)) && (!selector || handler.sel == selector)
     })
   }
-  //解析事件类型，返回一个包含事件名称和事件命名空间的对象
 
+  //解析事件类型，返回一个包含事件名称和事件命名空间的对象
   function parse(event) {
     var parts = ('' + event).split('.')
     return {
-      e: parts[0],
-      ns: parts.slice(1).sort().join(' ')
+      e: parts[0],  //事件名称
+      ns: parts.slice(1).sort().join(' ')  //事件命名空间
     }
   }
   //生成命名空间的正则
@@ -1415,28 +1420,30 @@ window.Zepto = Zepto;
   function matcherFor(ns) {
     return new RegExp('(?:^| )' + ns.replace(' ', ' .* ?') + '(?: |$)')
   }
-  //遍历events
 
+  //遍历events ['click','mouseover','mouseout'] 或  'click mouseover mouseout'
   function eachEvent(events, fn, iterator) {
-    if ($.type(events) != "string") $.each(events, iterator)
-    else events.split(/\s/).forEach(function(type) {
-      iterator(type, fn)
-    })
+    if ($.type(events) != "string") {
+      $.each(events, iterator)
+    }
+    else {
+      events.split(/\s/).forEach(function(type) {
+        iterator(type, fn)
+      })
+    }
   }
-  //通过给focus和blur事件设置为捕获来达到事件冒泡的目的
 
+  //通过给focus和blur事件设置为捕获来达到事件冒泡的目的
   function eventCapture(handler, captureSetting) {
     return handler.del && (handler.e == 'focus' || handler.e == 'blur') || !! captureSetting
   }
 
   //修复不支持mouseenter和mouseleave的情况
-
   function realEvent(type) {
     return hover[type] || type
   }
 
   //给元素绑定监听事件,可同时绑定多个事件类型，如['click','mouseover','mouseout'],也可以是'click mouseover mouseout'
-
   function add(element, events, fn, selector, getDelegate, capture) {
     var id = zid(element),
       set = (handlers[id] || (handlers[id] = [])) //元素上已经绑定的所有事件处理函数
@@ -1446,16 +1453,24 @@ window.Zepto = Zepto;
         handler.fn = fn
         handler.sel = selector
         // 模仿 mouseenter, mouseleave
-        if (handler.e in hover) fn = function(e) {
-          /* 
-            relatedTarget为事件相关对象，只有在mouseover和mouseout事件时才有值
-            mouseover时表示的是鼠标移出的那个对象，mouseout时表示的是鼠标移入的那个对象
-            当related不存在，表示事件不是mouseover或者mouseout,mouseover时!$.contains(this, related)当相关对象不在事件对象内
-            且related !== this相关对象不是事件对象时，表示鼠标已经从事件对象外部移入到了对象本身，这个时间是要执行处理函数的
-            当鼠标从事件对象上移入到子节点的时候related就等于this了，且!$.contains(this, related)也不成立，这个时间是不需要执行处理函数的
-        */
-          var related = e.relatedTarget
-          if (!related || (related !== this && !$.contains(this, related))) return handler.fn.apply(this, arguments)
+        if (handler.e in hover) {
+          fn = function(e) {
+            /* 
+              relatedTarget为事件相关对象，只有在mouseover和mouseout事件时才有值
+              mouseover时表示的是鼠标移出的那个对象，mouseout时表示的是鼠标移入的那个对象
+              当related不存在，表示事件不是mouseover或者mouseout,
+              mouseover时：!$.contains(this, related)当相关对象不在事件对象内（从父节点移入目标）
+                          且related !== this相关对象不是事件对象时，表示鼠标已经从事件对象外部移入到了对象本身，这个时间是要执行处理函数的（视做发生mouseenter）
+              当鼠标从事件对象上移入到子节点的时候related就等于this了，且!$.contains(this, related)也不成立，这个时间是不需要执行处理函数的
+              
+          */
+            var related = e.relatedTarget
+            if (!related || //不是mouseover和mouseout事件
+                (related !== this //不是从父元素移动到子元素时 子元素触发事件 冒泡到父元素的
+                  && !$.contains(this, related))) { //不是从子元素移动到后代元素时 后代元素触发事件 冒泡到父元素的
+              return handler.fn.apply(this, arguments)
+            }
+          }
         }
         //事件委托
         handler.del = getDelegate && getDelegate(fn, event)
@@ -1474,7 +1489,6 @@ window.Zepto = Zepto;
       })
   }
   //删除绑定在元素上的指定类型的事件监听函数，可同时删除多种事件类型指定的函数，用数组或者还空格的字符串即可，同add
-
   function remove(element, events, fn, selector, capture) {
     var id = zid(element)
     eachEvent(events || '', fn, function(event, fn) {
@@ -1490,7 +1504,7 @@ window.Zepto = Zepto;
     remove: remove
   }
 
-  //设置代理
+  //设置代理 设定fn的执行上下文 即fn的this的指向
   $.proxy = function(fn, context) {
     if ($.isFunction(fn)) {
       //如果fn是函数，则申明一个新的函数并用context作为上下文调用fn
@@ -1532,41 +1546,44 @@ window.Zepto = Zepto;
   }
 
   var returnTrue = function() {
-    return true
-  },
-  returnFalse = function() {
-    return false
-  },
-  ignoreProperties = /^([A-Z]|layer[XY]$)/,
-    eventMethods = {
-      preventDefault: 'isDefaultPrevented', //是否调用过preventDefault方法
-      //取消执行其他的事件处理函数并取消事件冒泡.如果同一个事件绑定了多个事件处理函数, 在其中一个事件处理函数中调用此方法后将不会继续调用其他的事件处理函数.
-      stopImmediatePropagation: 'isImmediatePropagationStopped', //是否调用过stopImmediatePropagation方法，
-      stopPropagation: 'isPropagationStopped' //是否调用过stopPropagation方法
-    }
-    //创建事件代理
+        return true
+      },
+      returnFalse = function() {
+        return false
+      },
+      ignoreProperties = /^([A-Z]|layer[XY]$)/,
+      eventMethods = {
+          preventDefault: 'isDefaultPrevented', //是否调用过preventDefault方法
+          //取消执行其他的事件处理函数并取消事件冒泡.如果同一个事件绑定了多个事件处理函数, 在其中一个事件处理函数中调用此方法后将不会继续调用其他的事件处理函数.
+          stopImmediatePropagation: 'isImmediatePropagationStopped', //是否调用过stopImmediatePropagation方法，
+          stopPropagation: 'isPropagationStopped' //是否调用过stopPropagation方法
+        };
 
+    //创建事件代理 包装原始event对象
     function createProxy(event) {
       var key, proxy = {
         originalEvent: event
       } //保存原始event
       for (key in event)
-      if (!ignoreProperties.test(key) && event[key] !== undefined) proxy[key] = event[key] //复制event属性至proxy
+      if (!ignoreProperties.test(key) && event[key] !== undefined){
+        proxy[key] = {
+          event[key] //复制event属性至proxy
+        }
+      }
 
       //将preventDefault，stopImmediatePropagatio,stopPropagation方法定义到proxy上
       $.each(eventMethods, function(name, predicate) {
         proxy[name] = function() {
-          this[predicate] = returnTrue
-          return event[name].apply(event, arguments)
+          this[predicate] = returnTrue  //调用后为true
+          return event[name].apply(event, arguments)  //原始事件的相应方法执行
         }
-        proxy[predicate] = returnFalse
+        proxy[predicate] = returnFalse  //初始值为false
       })
       return proxy
     }
 
     // emulates the 'defaultPrevented' property for browsers that have none
     //event.defaultPrevented返回一个布尔值,表明当前事件的默认动作是否被取消,也就是是否执行了 event.preventDefault()方法.
-
     function fix(event) {
       if (!('defaultPrevented' in event)) {
         event.defaultPrevented = false //初始值false
@@ -1686,7 +1703,11 @@ window.Zepto = Zepto;
     var event = document.createEvent(specialEvents[type] || 'Events'),
       bubbles = true
       //确保bubbles的值为true或false,并将props参数的属性扩展到新创建的event对象上
-    if (props) for (var name in props)(name == 'bubbles') ? (bubbles = !! props[name]) : (event[name] = props[name])
+    if (props) {
+      for (var name in props){
+        (name == 'bubbles') ? (bubbles = !! props[name]) : (event[name] = props[name])
+      }
+    }
     //初始化event对象，type为事件类型，如click，bubbles为是否冒泡，第三个参数表示是否可以用preventDefault方法来取消默认操作
     event.initEvent(type, bubbles, true, null, null, null, null, null, null, null, null, null, null, null, null)
     //添加isDefaultPrevented方法，event.defaultPrevented返回一个布尔值,表明当前事件的默认动作是否被取消,也就是是否执行了 event.preventDefault()方法.
@@ -1697,6 +1718,8 @@ window.Zepto = Zepto;
   }
 
 })(Zepto)
+
+//bookmark  5/15 16:16
 
 /**
   Ajax处理部份
@@ -2079,6 +2102,7 @@ window.Zepto = Zepto;
 })(Zepto)
 
 ;
+//序列化表单
 (function($) {
   //序列化表单，返回一个类似[{name:value},{name2:value2}]的数组
   $.fn.serializeArray = function() {
