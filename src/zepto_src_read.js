@@ -1,4 +1,5 @@
 /* Zepto v1.0-1-ga3cab6c - polyfill zepto detect event ajax form fx - zeptojs.com/license */
+//扩展原生对象增加trim,reduce方法
 ;(function(undefined) {
   if (String.prototype.trim === undefined) // fix for iOS 3.2
   String.prototype.trim = function() {
@@ -49,7 +50,7 @@
   }
 
 })()
-
+//定义Zepto变量 
 var Zepto = (function() {
   var undefined, key, $, classList, emptyArray = [],
     slice = emptyArray.slice,
@@ -1209,17 +1210,41 @@ var Zepto = (function() {
         Dimension = dimension.replace(/./, function(m) {
           return m[0].toUpperCase()
         })
+        //todo:详细梳理
+        //question:scrollWidth/height/left/top/X/Y, 
+        //         clientWidth/height/left/top, 
+        //         offsetWidth/height/left/top/parent,
+        //         innerWidth/height,
+        //         outerWidth/height,
+        //         availWidth/height,
+        //         screenTop/left/X/Y,
+        //         pageX/YOffset
+        //         width/height
+        //         style.left/top起始点
+        //window,document.body,document.documentElement
         //没有参数为获取，获取window的width和height用innerWidth,innerHeight
-      if (value === undefined) return isWindow(el) ? el['inner' + Dimension] :
-      //获取document的width和height时，用offsetWidth,offsetHeight
-      isDocument(el) ? el.documentElement['offset' + Dimension] : (offset = this.offset()) && offset[dimension]
-      else return this.each(function(idx) {
-        el = $(this)
-        el.css(dimension, funcArg(this, value, idx, el[dimension]()))
-      })
+        //window对象：
+        // 
+        // （1）innerHeight属性：窗口中文档显示区域的高度，不包括菜单栏、工具栏等部分。该属性可读可写。
+        //      IE不支持该属性，IE中body元素的clientHeight属性与该属性相同。
+        // （2)innerWidth属性：窗口中文档显示区域的宽度，同样不包括边框。该属性可读可写。
+        //      IE不支持该属性，IE中body元素的clientWidth属性与该属性相同。
+      if (value === undefined) {
+        return isWindow(el) ? el['inner' + Dimension] :
+                  //获取document的width和height时，用offsetWidth,offsetHeight
+                  isDocument(el) ? el.documentElement['offset' + Dimension]
+                                 : (offset = this.offset()) && offset[dimension] //question:直接用this[0].width||null?
+      }
+      else {
+        return this.each(function(idx) {
+          el = $(this)
+          el.css(dimension, funcArg(this, value, idx, el[dimension]()))
+        })
+      }
     }
   })
 
+  //以中序遍历的方式对node及所有后代节点调用函数
   function traverseNode(node, fun) {
     fun(node)
     for (var key in node.childNodes) traverseNode(node.childNodes[key], fun)
@@ -1227,21 +1252,24 @@ var Zepto = (function() {
 
   // Generate the `after`, `prepend`, `before`, `append`,
   // `insertAfter`, `insertBefore`, `appendTo`, and `prependTo` methods.
+  // 将所有方法都转化为使用原生的node.inserBefore方法实现
   adjacencyOperators.forEach(function(operator, operatorIndex) {
     var inside = operatorIndex % 2 //=> prepend, append
 
     $.fn[operator] = function() {
       // arguments can be nodes, arrays of nodes, Zepto objects and HTML strings
+      // 1，获取节点集合
       var argType, nodes = $.map(arguments, function(arg) {
-        argType = type(arg)
-        return argType == "object" || argType == "array" || arg == null ? arg : zepto.fragment(arg)
-      }),
-        parent, copyByClone = this.length > 1 //如果集合的长度大于集，则需要clone被插入的节点
+            argType = type(arg)
+            return argType == "object" || argType == "array" || arg == null ? arg : zepto.fragment(arg)
+          }),
+          parent, copyByClone = this.length > 1 //如果集合的长度大于1，则需要clone被插入的节点
       if (nodes.length < 1) return this
 
       return this.each(function(_, target) {
+        //2,获取插入点父元素
         parent = inside ? target : target.parentNode
-
+        //3,获取插入点
         //通过改变target将after，prepend，append操作转成before操作，insertBefore的第二个参数为null时等于appendChild操作
         target = operatorIndex == 0 ? target.nextSibling : operatorIndex == 1 ? target.firstChild : operatorIndex == 2 ? target : null
 
@@ -1250,6 +1278,8 @@ var Zepto = (function() {
           else if (!parent) return $(node).remove()
 
           //插入节点后，如果被插入的节点是SCRIPT，则执行里面的内容并将window设为上下文
+          //insertBefore() 方法可在已有的子节点前插入一个新的子节点。
+          //此方法可返回新的子节点。
           traverseNode(parent.insertBefore(node, target), function(el) {
             if (el.nodeName != null && el.nodeName.toUpperCase() === 'SCRIPT' && (!el.type || el.type === 'text/javascript') && !el.src) window['eval'].call(window, el.innerHTML)
           })
@@ -1266,7 +1296,7 @@ var Zepto = (function() {
       return this
     }
   })
-
+  //定义zepto.Z的原型,使得所有的zepto包装对象具有zepto提供的方法
   zepto.Z.prototype = $.fn
 
   // Export internal API functions in the `$.zepto` namespace
@@ -1276,12 +1306,15 @@ var Zepto = (function() {
 
   return $
 })();
-
+//抛出全局变量
 window.Zepto = Zepto;
+//尝试注册$
 '$' in window || (window.$ = Zepto);
 
+//浏览器探测
 ;(function($) {
   function detect(ua) {
+    //通过后面的detect.call($, navigator.userAgent)，使得this为$
     var os = this.os = {}, browser = this.browser = {},
     webkit = ua.match(/WebKit\/([\d.]+)/),
       android = ua.match(/(Android)\s+([\d.]+)/),
@@ -1329,8 +1362,9 @@ window.Zepto = Zepto;
   // make available to unit tests
   $.__detect = detect
 
-})(Zepto)
+})(Zepto) //传入zepto全局变量
 
+//bookmark 5/15 11:28
 /* 
 事件处理部份
  */
