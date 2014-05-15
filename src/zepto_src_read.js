@@ -1386,7 +1386,7 @@ window.Zepto = Zepto;
   //事件类型为MouseEvents的 用于手动创建事件
   specialEvents.click = specialEvents.mousedown = specialEvents.mouseup = specialEvents.mousemove = 'MouseEvents'
 
-  //取element/function的唯一标示符，如果没有，则设置一个并返回
+  //设置/取element/function的唯一标示符，如果没有，则设置一个并返回
   function zid(element) {
     return element._zid || (element._zid = _zid++)
   }
@@ -1399,11 +1399,13 @@ window.Zepto = Zepto;
     }
     return (handlers[zid(element)] || []).filter(function(handler) {
       return handler && (!event.e || handler.e == event.e) //判断事件类型是否相同
-      &&(!event.ns || matcher.test(handler.ns)) //判断事件命名空间是否相同
-      //注意函数是引用类型的数据zid(handler.fn)的作用是返回handler.fn的标示符，如果没有，则给它添加一个，
-      //这样如果fn和handler.fn引用的是同一个函数，那么fn上应该也可相同的标示符，
-      //这里就是通过这一点来判断两个变量是否引用的同一个函数
-      &&(!fn || zid(handler.fn) === zid(fn)) && (!selector || handler.sel == selector)
+              &&(!event.ns || matcher.test(handler.ns)) //判断事件命名空间是否相同
+              //注意函数是引用类型的数据zid(handler.fn)的作用是返回handler.fn的标示符，如果没有，则给它添加一个，
+              //这样如果fn和handler.fn引用的是同一个函数，那么fn上应该也可相同的标示符，
+              //这里就是通过这一点来判断两个变量是否引用的同一个函数
+              &&(!fn || zid(handler.fn) === zid(fn)) 
+              //统一选择器
+              && (!selector || handler.sel == selector)
     })
   }
 
@@ -1433,7 +1435,7 @@ window.Zepto = Zepto;
     }
   }
 
-  //通过给focus和blur事件设置为捕获来达到事件冒泡的目的
+  //通过给focus和blur事件设置为捕获来达到事件冒泡的目的 则在上层元素上会先触发 在目标元素上后触发
   function eventCapture(handler, captureSetting) {
     return handler.del && (handler.e == 'focus' || handler.e == 'blur') || !! captureSetting
   }
@@ -1599,9 +1601,11 @@ window.Zepto = Zepto;
       return this.each(function(i, element) {
         add(element, event, callback, selector, function(fn) {
           return function(e) {
+            //冒泡到此处 执行绑定的包装函数
             //如果事件对象是element里的元素,取与selector相匹配的
             var evt, match = $(e.target).closest(selector, element).get(0)
             if (match) {
+              //满足条件则执行绑定在上面的原始委托函数
               //evt成了一个拥有preventDefault，stopImmediatePropagatio,stopPropagation方法，currentTarge,liveFiredn属性的对象,另也有e的默认属性
               evt = $.extend(createProxy(e), {
                 currentTarget: match,
@@ -1675,20 +1679,22 @@ window.Zepto = Zepto;
     'change select keydown keypress keyup error').split(' ').forEach(function(event) {
     $.fn[event] = function(callback) {
       return callback ?
-      //如果有callback回调，则认为它是绑定
-      this.bind(event, callback) :
-      //如果没有callback回调，则让它主动触发
-      this.trigger(event)
+            //如果有callback回调，则认为它是绑定
+            this.bind(event, callback) :
+            //如果没有callback回调，则让它主动触发
+            this.trigger(event)
     }
   })
 
   ;
   ['focus', 'blur'].forEach(function(name) {
     $.fn[name] = function(callback) {
-      if (callback) this.bind(name, callback)
+      if (callback) { //绑定事件
+        this.bind(name, callback)
+      }
       else this.each(function() {
         try {
-          this[name]()
+          this[name]() //触发事件
         } catch (e) {}
       })
       return this
@@ -1698,10 +1704,12 @@ window.Zepto = Zepto;
   //根据参数创建一个event对象
   $.Event = function(type, props) {
     //当type是个对象时
-    if (typeof type != 'string') props = type, type = props.type
+    if (typeof type != 'string') {
+      props = type, type = props.type
+    }
     //创建一个event对象，如果是click,mouseover,mouseout时，创建的是MouseEvent,bubbles为是否冒泡
     var event = document.createEvent(specialEvents[type] || 'Events'),
-      bubbles = true
+        bubbles = true;
       //确保bubbles的值为true或false,并将props参数的属性扩展到新创建的event对象上
     if (props) {
       for (var name in props){
@@ -1709,8 +1717,16 @@ window.Zepto = Zepto;
       }
     }
     //初始化event对象，type为事件类型，如click，bubbles为是否冒泡，第三个参数表示是否可以用preventDefault方法来取消默认操作
-    event.initEvent(type, bubbles, true, null, null, null, null, null, null, null, null, null, null, null, null)
-    //添加isDefaultPrevented方法，event.defaultPrevented返回一个布尔值,表明当前事件的默认动作是否被取消,也就是是否执行了 event.preventDefault()方法.
+    //对于mouseevent需要传9个参数
+    //event只要传3个
+    //就算创建的是mouseEvent类型，除了initMouseEvent方法也有initEvent 方法
+    //http://blog.csdn.net/diligentcatrich/article/details/9465011
+    //http://www.w3.org/TR/DOM-Level-2-Events/events.html#Events-eventgroupings
+    event.initEvent(type, bubbles, true, null, null, 
+      null, null, null, null, null, 
+      null, null, null, null, null)
+
+    //添加isDefaultPrevented方法，eevent.defaultPrevented返回一个布尔值,表明当前事件的默认动作是否被取消,也就是是否执行了 event.preventDefault()方法.
     event.isDefaultPrevented = function() {
       return this.defaultPrevented
     }
