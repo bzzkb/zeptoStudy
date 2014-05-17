@@ -1210,19 +1210,52 @@ var Zepto = (function() {
         Dimension = dimension.replace(/./, function(m) {
           return m[0].toUpperCase()
         })
-        //todo:详细梳理
-        //question:scrollWidth/height/left/top/X/Y, 
-        //         clientWidth/height/left/top, 
-        //         offsetWidth/height/left/top/parent,
-        //         innerWidth/height,
-        //         outerWidth/height,
-        //         availWidth/height,
-        //         screenTop/left/X/Y,
-        //         pageX/YOffset
+
+        // 
+        // element.scrollWidth : 水平滚动条的长度+width+左右内边距+
+        //         scrollheight : 垂直滚动条的长度+height+上下内边距+
+        //         scrollLeft:水平滚动条的长度
+        //         scrollTop:垂直滚动条的长度
+        //
+        
+        // element.clientWidth:width + 左右内边距
+        //         clientheight:height + 上下内边距
+        //         clientleft：？
+        //         clienttop：？
+
+        
+        // element.offsetWidth:左右边框+左右内边距+width
+        //         offsetHeight:上下边框+上下内边距+height
+        //         offsetLeft:元素左外边框到包含元素的左内边框的距离
+        //         offsetTop:元素的上外边框到包含元素的上内边框的距离
+
+        //  window.innerWidth:文档显示区域的宽度
+        //         innerheight:文档显示区域的高度
+        //         outerWidth:整个窗口的宽度
+        //         outerheight:整个窗口的高度
+
+        //  screen.availWidth：显示屏幕的宽度 (除 Windows 任务栏之外)
+        //         availheight: 显示屏幕的高度 (除 Windows 任务栏之外)
+
+        //  window.screenLeft/screenX:窗口的左上角在屏幕上的x坐标
+        //         screenTop/screenY:口的左上角在屏幕上的y坐标
+
+        //  window.pageXOffset:表示文档向右滚动过的像素数
+        //         pageYOffset：表示文档向下滚动过的像素数
+
+        //混杂模式使用document.body 标准模式使用document.documentElement
+        //文档卷曲高度scrollTop = window.pageYOffset  //用于FF
+                // || document.documentElement.scrollTop  
+                // || document.body.scrollTop 
+                // || scrollY 
+                // || 0;
+
         //         width/height
         //         style.left/top起始点
-        //window,document.body,document.documentElement
-        //没有参数为获取，获取window的width和height用innerWidth,innerHeight
+        // document.body,document.documentElement
+        //   body是DOM对象里的body子节点，即 <body> 标签；
+        //   documentElement 是整个节点树的根节点root，即<html> 标签；
+
         //window对象：
         // 
         // （1）innerHeight属性：窗口中文档显示区域的高度，不包括菜单栏、工具栏等部分。该属性可读可写。
