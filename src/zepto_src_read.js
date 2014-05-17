@@ -1754,7 +1754,6 @@ window.Zepto = Zepto;
     blankRE = /^\s*$/
 
     // trigger a custom event and return false if it was cancelled
-
     function triggerAndReturn(context, eventName, data) {
       var event = $.Event(eventName)
       $(context).trigger(event, data)
@@ -1763,9 +1762,10 @@ window.Zepto = Zepto;
 
     // trigger an Ajax "global" event
     //触发 ajax的全局事件
-
     function triggerGlobal(settings, context, eventName, data) {
-      if (settings.global) return triggerAndReturn(context || document, eventName, data)
+      if (settings.global) {
+        return triggerAndReturn(context || document, eventName, data)
+      }
     }
 
     // Number of active Ajax requests
@@ -1773,43 +1773,47 @@ window.Zepto = Zepto;
 
     //settings.global为true时表示需要触发全局ajax事件
     //注意这里的$.active++ === 0很巧妙，用它来判断开始，因为只有$.active等于0时$.active++ === 0才成立
-
     function ajaxStart(settings) {
-      if (settings.global && $.active++ === 0) triggerGlobal(settings, null, 'ajaxStart')
+      if (settings.global && $.active++ === 0) {
+        triggerGlobal(settings, null, 'ajaxStart')
+      }
     }
-    //注意这里的 !(--$.active)同上面的异曲同工，--$.active为0，则表示$.active的值为1，这样用来判断结束，也很有意思
 
+    //注意这里的 !(--$.active)同上面的异曲同工，--$.active为0，则表示$.active的值为1，这样用来判断结束，也很有意思
     function ajaxStop(settings) {
       if (settings.global && !(--$.active)) triggerGlobal(settings, null, 'ajaxStop')
     }
 
     // triggers an extra global event "ajaxBeforeSend" that's like "ajaxSend" but cancelable
     //触发全局ajaxBeforeSend事件，如果返回false,则取消此次请求
-
     function ajaxBeforeSend(xhr, settings) {
       var context = settings.context
-      if (settings.beforeSend.call(context, xhr, settings) === false || triggerGlobal(settings, context, 'ajaxBeforeSend', [xhr, settings]) === false) return false
+      if (settings.beforeSend.call(context, xhr, settings) === false || 
+        triggerGlobal(settings, context, 'ajaxBeforeSend', [xhr, settings]) === false) {
+        return false
+      }
 
       triggerGlobal(settings, context, 'ajaxSend', [xhr, settings])
     }
 
     function ajaxSuccess(data, xhr, settings) {
       var context = settings.context,
-        status = 'success'
+          status = 'success';
+
       settings.success.call(context, data, status, xhr)
       triggerGlobal(settings, context, 'ajaxSuccess', [xhr, settings, data])
       ajaxComplete(status, xhr, settings)
     }
-    // type: "timeout", "error", "abort", "parsererror"
 
+    // type: "timeout", "error", "abort", "parsererror"
     function ajaxError(error, type, xhr, settings) {
       var context = settings.context
       settings.error.call(context, xhr, type, error)
       triggerGlobal(settings, context, 'ajaxError', [xhr, settings, error])
       ajaxComplete(type, xhr, settings)
     }
-    // status: "success", "notmodified", "error", "timeout", "abort", "parsererror"
 
+    // status: "success", "notmodified", "error", "timeout", "abort", "parsererror"
     function ajaxComplete(status, xhr, settings) {
       var context = settings.context
       settings.complete.call(context, xhr, status)
@@ -1818,11 +1822,13 @@ window.Zepto = Zepto;
     }
 
     // Empty function, used as default callback
-
     function empty() {}
+
     //可参考http://zh.wikipedia.org/zh-cn/JSONP
     $.ajaxJSONP = function(options) {
-      if (!('type' in options)) return $.ajax(options)
+      if (!('type' in options)) {
+        return $.ajax(options)
+      }
 
       var callbackName = 'jsonp' + (++jsonpID), //创建回调函数名
         script = document.createElement('script'),
@@ -1839,11 +1845,13 @@ window.Zepto = Zepto;
           // so that the SCRIPT tag that eventually loads won't result in an error.
           //这里通过将回调函数重新赋值为空函数来达到看似阻止加载JS的目的，实际上给script标签设置了src属性后，请求就已经产生了，并且不能中断
           if (!type || type == 'timeout') window[callbackName] = empty
+          //失败回调
           ajaxError(null, type || 'abort', xhr, options)
         },
         xhr = {
           abort: abort
-        }, abortTimeout
+        }, 
+        abortTimeout;
 
       if (ajaxBeforeSend(xhr, options) === false) {
         abort('abort')
@@ -1863,9 +1871,11 @@ window.Zepto = Zepto;
       $('head').append(script)
 
       //如果设置了超时处理
-      if (options.timeout > 0) abortTimeout = setTimeout(function() {
-        abort('timeout')
-      }, options.timeout)
+      if (options.timeout > 0) {
+        abortTimeout = setTimeout(function() {
+          abort('timeout')
+        }, options.timeout)
+      }
 
       return xhr
     }
@@ -1910,13 +1920,12 @@ window.Zepto = Zepto;
 
   //根据MIME返回相应的数据类型，用作ajax参数里的dataType用，设置预期返回的数据类型
   //如html,json,scirpt,xml,text
-
   function mimeToDataType(mime) {
     if (mime) mime = mime.split(';', 2)[0]
     return mime && (mime == htmlType ? 'html' : mime == jsonType ? 'json' : scriptTypeRE.test(mime) ? 'script' : xmlTypeRE.test(mime) && 'xml') || 'text'
   }
-  //将查询字符串追加到URL后面
 
+  //将查询字符串追加到URL后面
   function appendQuery(url, query) {
     //注意这里的replace,将第一个匹配到的&或者&&,&?,? ?& ??替换成?,用来保证地址的正确性
     return (url + '&' + query).replace(/[&?]{1,2}/, '?')
@@ -1924,15 +1933,16 @@ window.Zepto = Zepto;
 
   // serialize payload and append it to the URL for GET requests
   //序列化发送到服务器上的数据，如果是GET请求，则将序列化后的数据追加到请求地址后面
-
   function serializeData(options) {
     //options.processData表示对于非Get请求,是否自动将 options.data转换为字符串,前提是options.data不是字符串
-    if (options.processData && options.data && $.type(options.data) != "string")
-    //options.traditional表示是否以$.param方法序列化
-    options.data = $.param(options.data, options.traditional)
-    if (options.data && (!options.type || options.type.toUpperCase() == 'GET'))
-    //如果是GET请求，将序列化后的数据追加到请求地址后面
-    options.url = appendQuery(options.url, options.data)
+    if (options.processData && options.data && $.type(options.data) != "string"){
+      //options.traditional表示是否以$.param方法序列化
+      options.data = $.param(options.data, options.traditional)
+    }
+    if (options.data && (!options.type || options.type.toUpperCase() == 'GET')){
+      //如果是GET请求，将序列化后的数据追加到请求地址后面
+      options.url = appendQuery(options.url, options.data)
+    }
   }
 
   $.ajax = function(options) {
@@ -1940,42 +1950,71 @@ window.Zepto = Zepto;
     //这里的做法是创建一个新对象
     var settings = $.extend({}, options || {})
     //如果它没有定义$.ajaxSettings里面的属性的时候，才去将$.ajaxSettings[key] 复制过来
-    for (key in $.ajaxSettings) if (settings[key] === undefined) settings[key] = $.ajaxSettings[key]
+    for (key in $.ajaxSettings) {
+      if (settings[key] === undefined) {
+        settings[key] = $.ajaxSettings[key]
+      }
+    }
     //执行全局ajaxStart
     ajaxStart(settings)
 
     //通过判断请求地址和当前页面地址的host是否相同来设置是跨域
-    if (!settings.crossDomain) settings.crossDomain = /^([\w-]+:)?\/\/([^\/]+)/.test(settings.url) && RegExp.$2 != window.location.host
+    if (!settings.crossDomain) {
+      settings.crossDomain = /^([\w-]+:)?\/\/([^\/]+)/.test(settings.url) && RegExp.$2 != window.location.host
+    }
     //如果没有设置请求地址，则取当前页面地址
-    if (!settings.url) settings.url = window.location.toString();
+    if (!settings.url) {
+      settings.url = window.location.toString();
+    }
+
     //将data进行转换
     serializeData(settings);
+
     //如果不设置缓存
-    if (settings.cache === false) settings.url = appendQuery(settings.url, '_=' + Date.now())
+    if (settings.cache === false) {
+      settings.url = appendQuery(settings.url, '_=' + Date.now())
+    }
 
     //如果请求的是jsonp，则将地址栏里的=?替换为callback=?,相当于一个简写
     var dataType = settings.dataType,
       hasPlaceholder = /=\?/.test(settings.url)
       if (dataType == 'jsonp' || hasPlaceholder) {
-        if (!hasPlaceholder) settings.url = appendQuery(settings.url, 'callback=?')
+        if (!hasPlaceholder) {
+          settings.url = appendQuery(settings.url, 'callback=?')
+        }
         return $.ajaxJSONP(settings)
       }
 
     var mime = settings.accepts[dataType],
-      baseHeaders = {},
-      //如果请求地址没有定请求协议，则与当前页面协议相同
-      protocol = /^([\w-]+:)\/\//.test(settings.url) ? RegExp.$1 : window.location.protocol,
-      xhr = settings.xhr(),
-      abortTimeout
-      //如果没有跨域
-    if (!settings.crossDomain) baseHeaders['X-Requested-With'] = 'XMLHttpRequest'
+        baseHeaders = {},
+        //如果请求地址没有定请求协议，则与当前页面协议相同
+        protocol = /^([\w-]+:)\/\//.test(settings.url) ? RegExp.$1 : window.location.protocol,
+        xhr = settings.xhr(),
+        abortTimeout;
+    
+    //如果没有跨域
+    if (!settings.crossDomain) {
+      baseHeaders['X-Requested-With'] = 'XMLHttpRequest'
+    }
+
+    //Overrides the MIME type returned by the server. 
     if (mime) {
       baseHeaders['Accept'] = mime
-      if (mime.indexOf(',') > -1) mime = mime.split(',', 2)[0]
+      //string.split(separator,howmany)
+      //howmany 可选。该参数可指定返回的数组的最大长度。
+      //如果设置了该参数，返回的子串不会多于这个参数指定的数组。如果没有设置该参数，整个字符串都会被分割，不考虑它的长度。
+
+      if (mime.indexOf(',') > -1) {
+        mime = mime.split(',', 2)[0]
+      }
       xhr.overrideMimeType && xhr.overrideMimeType(mime)
     }
+
     //如果不是GET请求，设置发送信息至服务器时内容编码类型
-    if (settings.contentType || (settings.contentType !== false && settings.data && settings.type.toUpperCase() != 'GET')) baseHeaders['Content-Type'] = (settings.contentType || 'application/x-www-form-urlencoded')
+    if (settings.contentType || (settings.contentType !== false && settings.data && settings.type.toUpperCase() != 'GET')) {
+      baseHeaders['Content-Type'] = (settings.contentType || 'application/x-www-form-urlencoded')
+    }
+
     settings.headers = $.extend(baseHeaders, settings.headers || {})
 
     xhr.onreadystatechange = function() {
@@ -2014,7 +2053,10 @@ window.Zepto = Zepto;
     var async = 'async' in settings ? settings.async : true
     xhr.open(settings.type, settings.url, async)
     //设置请求头信息
-    for (name in settings.headers) xhr.setRequestHeader(name, settings.headers[name])
+    //Sets the value of an HTTP request header.
+    for (name in settings.headers) {
+      xhr.setRequestHeader(name, settings.headers[name])
+    }
 
     //如果ajaxBeforeSend函数返回的false，则取消此次请示
     if (ajaxBeforeSend(xhr, settings) === false) {
@@ -2023,11 +2065,13 @@ window.Zepto = Zepto;
     }
 
     //当设置了settings.timeout，则在超时后取消请求，并执行timeout事件处理函数
-    if (settings.timeout > 0) abortTimeout = setTimeout(function() {
-      xhr.onreadystatechange = empty
-      xhr.abort()
-      ajaxError(null, 'timeout', xhr, settings)
-    }, settings.timeout)
+    if (settings.timeout > 0) {
+      abortTimeout = setTimeout(function() {
+        xhr.onreadystatechange = empty
+        xhr.abort()
+        ajaxError(null, 'timeout', xhr, settings)
+      }, settings.timeout)
+    }
 
     // avoid sending empty string (#319)
     xhr.send(settings.data ? settings.data : null)
@@ -2036,7 +2080,6 @@ window.Zepto = Zepto;
 
   // handle optional data/success arguments
   //将参数转换成ajax函数指定的参数格式
-
   function parseArguments(url, data, success, dataType) {
     var hasData = !$.isFunction(data) //如果data是function，则认为它是请求成功后的回调
     return {
@@ -2073,7 +2116,9 @@ window.Zepto = Zepto;
       selector,
       options = parseArguments(url, data, success),
       callback = options.success
-    if (parts.length > 1) options.url = parts[0], selector = parts[1]
+    if (parts.length > 1) {
+      options.url = parts[0], selector = parts[1]
+    }
     //要对成功后的回调函数进行一个改写，因为需要将加载进来的HTML添加进当前集合
     options.success = function(response) {
       //selector就是对请求到的数据就行一个筛选的条件，比如只获取数据里的类名为.test的标签
@@ -2101,11 +2146,23 @@ window.Zepto = Zepto;
         if (!scope && array) params.add(value.name, value.value)
         // recurse into nested objects
         //当value值是数组或者是对象且不是按传统的方式序列化的时候，需要再次遍历value
-        else if (type == "array" || (!traditional && type == "object")) serialize(params, value, traditional, key)
+        else if (type == "array" || (!traditional && type == "object")) {
+          serialize(params, value, traditional, key)
+        }
         else params.add(key, value)
       })
     }
     //将obj转换为查询字符串的格式，traditional表示是否转换成传统的方式，至于传统的方式的意思看上面的注释
+    // $.param({ foo: { one: 1, two: 2 }})
+    // //=> "foo[one]=1&foo[two]=2)"
+    // $.param({ ids: [1,2,3] })
+    // //=> "ids[]=1&ids[]=2&ids[]=3"
+    // $.param({ ids: [1,2,3] }, true)
+    // //=> "ids=1&ids=2&ids=3"
+    // $.param({ foo: 'bar', nested: { will: 'not be ignored' }})
+    // //=> "foo=bar&nested[will]=not+be+ignored"
+    // $.param({ foo: 'bar', nested: { will: 'be ignored' }}, true)
+    // //=> "foo=bar&nested=[object+Object]"
     $.param = function(obj, traditional) {
       var params = []
       //注意这里将add方法定到params，所以下面serialize时才不需要返回数据
@@ -2125,6 +2182,9 @@ window.Zepto = Zepto;
     var result = [],
       el
       //将集合中的第一个表单里的所有表单元素转成数组后进行遍历
+      // elements 集合可返回包含表单中所有元素的数组。
+      // 元素在数组中出现的顺序和它们在表单的HTML 源代码中出现的顺序相同。
+      // 每个元素都有一个 type 属性，其字符串值说明了元素的类型。
       $(Array.prototype.slice.call(this.get(0).elements)).each(function() {
         el = $(this)
         var type = el.attr('type')
@@ -2133,11 +2193,13 @@ window.Zepto = Zepto;
         //注意这里的写法，当元素既不是radio也不是checkbox时,直接返回true，
         //当元素是radio或者checkbox时，会执行后面的this.checked，当radio或者checkbox被选中时this.checked得到true值
         //这样就可以筛选中被选中的radio和checkbox了
-        ((type != 'radio' && type != 'checkbox') || this.checked)) result.push({
-          name: el.attr('name'),
-          value: el.val()
-        })
-      })
+        ((type != 'radio' && type != 'checkbox') || this.checked)) {
+          result.push({
+            name: el.attr('name'),
+            value: el.val()
+          })
+        }
+      });
       return result
   }
   //将表单的值转成name1=value1&name2=value2的形式
@@ -2149,6 +2211,7 @@ window.Zepto = Zepto;
     return result.join('&')
   }
   //表单提交
+  //ps:自定义事件的出发是通过原始的创建event，然后调用dispatchEvent方法，因此这种自定义的方法也会冒泡
   $.fn.submit = function(callback) {
     if (callback) this.bind('submit', callback)
     else if (this.length) {
@@ -2164,9 +2227,11 @@ window.Zepto = Zepto;
 //CSS3动画
 ;
 (function($, undefined) {
-  var prefix = '',
-    eventPrefix, endEventName, endAnimationName,
-    vendors = {
+  var prefix = '', //厂商前缀
+    eventPrefix,   //厂商时间前缀
+    endEventName, 
+    endAnimationName,
+    vendors = { //浏览器厂家前缀
       Webkit: 'webkit',
       Moz: '',
       O: 'o',
@@ -2188,8 +2253,8 @@ window.Zepto = Zepto;
     function downcase(str) {
       return str.toLowerCase()
     }
-    //用于修正事件名
 
+    //用于修正事件名
     function normalizeEvent(name) {
       return eventPrefix ? eventPrefix + name : downcase(name)
     }
@@ -2205,7 +2270,12 @@ window.Zepto = Zepto;
     })
 
     transform = prefix + 'transform'
-  cssReset[transitionProperty = prefix + 'transition-property'] = cssReset[transitionDuration = prefix + 'transition-duration'] = cssReset[transitionTiming = prefix + 'transition-timing-function'] = cssReset[animationName = prefix + 'animation-name'] = cssReset[animationDuration = prefix + 'animation-duration'] = cssReset[animationTiming = prefix + 'animation-timing-function'] = ''
+    cssReset[transitionProperty = prefix + 'transition-property'] = 
+    cssReset[transitionDuration = prefix + 'transition-duration'] = 
+    cssReset[transitionTiming = prefix + 'transition-timing-function'] = 
+    cssReset[animationName = prefix + 'animation-name'] = 
+    cssReset[animationDuration = prefix + 'animation-duration'] = 
+    cssReset[animationTiming = prefix + 'animation-timing-function'] = ''
 
   $.fx = {
     off: (eventPrefix === undefined && testEl.style.transitionProperty === undefined),
@@ -2220,12 +2290,18 @@ window.Zepto = Zepto;
   }
 
   $.fn.animate = function(properties, duration, ease, callback) {
-    if ($.isPlainObject(duration)) ease = duration.easing, callback = duration.complete, duration = duration.duration
+    if ($.isPlainObject(duration)) {
+      ease = duration.easing, 
+      callback = duration.complete, 
+      duration = duration.duration
+    }
     //如果duration是数字时，表示动画持续时间，如果是字符串，则从$.fx.speeds中取出相对应的值，如果没有找到相应的值，对取默认值
-    if (duration) duration = (typeof duration == 'number' ? duration : ($.fx.speeds[duration] || $.fx.speeds._default)) / 1000
+    if (duration) {
+      duration = (typeof duration == 'number' ? duration : ($.fx.speeds[duration] || $.fx.speeds._default)) / 1000
+    }
     return this.anim(properties, duration, ease, callback)
-  }
-
+  }  
+  //设置  使用的是css3的变形和动画  结束后重置变形和动画css 回调函数通过绑定动画执行结束事件完成的
   $.fn.anim = function(properties, duration, ease, callback) {
     var key, cssValues = {}, cssProperties, transforms = '',
       that = this,
@@ -2271,9 +2347,10 @@ window.Zepto = Zepto;
     if (duration > 0) this.bind(endEvent, wrappedCallback)
 
     // trigger page reflow so new elements can animate
+  //出发重绘
     this.size() && this.get(0).clientLeft
 
-    //设置
+    //设置  使用的是css3的变形和动画
     this.css(cssValues)
 
     //当持续时间小于等于0时，立刻还原
@@ -2286,5 +2363,5 @@ window.Zepto = Zepto;
     return this
   }
 
-  testEl = null
+  testEl = null  //解除引用？
 })(Zepto)
