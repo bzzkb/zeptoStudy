@@ -1250,8 +1250,9 @@ var Zepto = (function() {
                 // || scrollY 
                 // || 0;
 
-        //         width/height
-        //         style.left/top起始点
+        //         
+        //         style.left/top起始点: 相对于包含块内边距外侧为定位
+
         // document.body,document.documentElement
         //   body是DOM对象里的body子节点，即 <body> 标签；
         //   documentElement 是整个节点树的根节点root，即<html> 标签；
@@ -2380,8 +2381,9 @@ window.Zepto = Zepto;
     if (duration > 0) this.bind(endEvent, wrappedCallback)
 
     // trigger page reflow so new elements can animate
-  //出发重绘
-    this.size() && this.get(0).clientLeft
+  //通过计算clientLeft值 触发重排
+    this.size() && this.get(0).clientLeft 
+    //offsetTop、offsetLeft、 offsetWidth、offsetHeight、scrollTop、scrollLeft、scrollWidth、scrollHeight、clientTop、clientLeft、clientWidth、clientHeight、getComputedStyle
 
     //设置  使用的是css3的变形和动画
     this.css(cssValues)
